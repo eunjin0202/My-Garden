@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>My Garden</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: black;
+      font-family: sans-serif;
+    }
+
+    .main-image {
+      position: absolute;
+      top: 50px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 1000px;
+    }
+
+    .question {
+      position: absolute;
+      top: 50px;
+      right: 30px;
+      width: 30px;
+      height: 30px;
+    }
+
+    .finish-btn {
+      position: absolute;
+      top: 700px;
+      left: 50%;
+      transform: translateX(-85%);
+      width: 200px;
+      height: auto;
+    }
+
+    .canvas {
+      position: absolute;
+      background-color: transparent;
+      cursor: pointer;
+    }
+
+    .control-panel {
+      position: absolute;
+      top: 180px;
+      left: 30px;
+      width: 160px;
+      background-color: #ffffffdd;
+      padding: 20px;
+      border-radius: 8px;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 20;
+    }
+    
+    #tooltip {
+      display: none;
+      position: absolute;
+      top: 90px;
+      right: 30px;
+      z-index: 100;
+      max-width: 420px;  /* 적절히 조절 가능 */
+      height: auto;
+    }
+
+    #canvas0 { top: 202px; left: calc(53% - 460px); width: 215px; height: 240px; border-radius: 120px 0 0 0; }
+    #canvas1 { top: 202px; left: calc(53% - 220px); width: 80px; height: 240px; border-radius: 0px; }
+    #canvas2 { top: 202px; left: calc(53% - 120px); width: 210px; height: 240px; border-radius: 0px; }
+    #canvas3 { top: 202px; left: calc(53% + 115px); width: 275px; height: 240px; border-radius: 0 120px 0 0; }
+    #canvas4 { top: 454px; left: calc(53% - 460px); width: 215px; height: 120px; border-radius: 0; }
+    #canvas5 { top: 454px; left: calc(53% - 233px); width: 180px; height: 120px; border-radius: 0px; }
+    #canvas6 { top: 454px; left: calc(53% - 30px); width: 180px; height: 120px; border-radius: 0px; }
+    #canvas7 { top: 454px; left: calc(53% + 175px); width: 215px; height: 120px; border-radius: 0; }
+
+  </style>
+</head>
+<body>
+  <img src="https://i.imgur.com/1n8vBrF.png" class="main-image" alt="Main Layout" />
+  <img src="https://i.imgur.com/7QACDbh.png" class="question" alt="Help" />
+  <div class="finish-btn">
+    <img src="https://i.imgur.com/HxnE1lm.png" alt="Finish">
+  </div>
+  <img id="tooltip" src="https://i.imgur.com/0n5LmcV.png" />
+
+  <!-- 제어 패널 -->
+  <div class="control-panel" id="controlPanel">
+    <button onclick="changeColor()">색상 변경</button>
+    <label>크기 조절:<br>
+      <input type="range" id="sizeSlider" min="0.5" max="2" step="0.1" value="1" oninput="changeSize(this.value)">
+    </label>
+  </div>
+
+  <!-- 8개의 캔버스 -->
+  <canvas class="canvas" id="canvas0"></canvas>
+  <canvas class="canvas" id="canvas1"></canvas>
+  <canvas class="canvas" id="canvas2"></canvas>
+  <canvas class="canvas" id="canvas3"></canvas>
+  <canvas class="canvas" id="canvas4"></canvas>
+  <canvas class="canvas" id="canvas5"></canvas>
+  <canvas class="canvas" id="canvas6"></canvas>
+  <canvas class="canvas" id="canvas7"></canvas>
+
+  <script>
+    const colorThemes = [
+      { fgColors: ['#FFD9EC', '#E8D9FF'], bg: '#F6F6F6' },
+      { fgColors: ['#3B8C4A', '#B4E197'], bg: '#E4F9E2' },
+      { fgColors: ['#95C88F', '#7CB98D', '#A8D5BA'], bg: '#E0F8EF' },
+      { fgColors: ['#99D4E2', '#CCEAF9'], bg: '#E4F5FA' },
+      { fgColors: ['#FFD6E3', '#FFC7C2', '#E8DAF9'], bg: '#FFF4DD' }
+    ];
+
+    const patternStates = Array(8).fill(0);
+    const colorStates = Array(8).fill(0);
+    let currentScale = 1;
+    let activeCanvasIndex = null;
+
+    const patterns = [
+      // 패턴 1: 격자 + 꽃잎
+      function(ctx, theme) {
+        ctx.fillStyle = theme.bg;
+        ctx.fillRect(0, 0, 300, 300);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        for (let i = 0; i <= 300; i += 25) {
+          ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 300); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(300, i); ctx.stroke();
+        }
+        for (let x = 50; x <= 250; x += 50) {
+          for (let y = 25; y <= 300; y += 50) {
+            ctx.fillStyle = theme.fgColors[Math.floor(Math.random() * theme.fgColors.length)];
+            ctx.beginPath();
+            ctx.ellipse(x, y, 15 * currentScale, 45 * currentScale, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(y, x, 40 * currentScale, 15 * currentScale, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      },
+
+      // 패턴 2: 잔디형 직사각형
+      function(ctx, theme) {
+        ctx.fillStyle = theme.bg;
+        ctx.fillRect(0, 0, 300, 300);
+        const w = 30 * currentScale;
+        const h = 60 * currentScale;
+        for (let x = -30; x < 330; x += w * 1.5) {
+          for (let y = -30; y < 330; y += h) {
+            ctx.fillStyle = theme.fgColors[Math.floor(Math.random() * theme.fgColors.length)];
+            ctx.fillRect(x, y, w, h);
+          }
+        }
+      },
+
+      // 패턴 3: 삼각형 (나무형태)
+      function(ctx, theme) {
+        ctx.fillStyle = theme.bg;
+        ctx.fillRect(0, 0, 300, 300);
+        for (let i = 0; i < 100; i++) {
+          const cx = Math.random() * 300;
+          const cy = Math.random() * 300;
+          const w = 10 + Math.random() * 50;
+          const h = 30 + Math.random() * 120;
+          ctx.fillStyle = theme.fgColors[Math.floor(Math.random() * theme.fgColors.length)];
+          ctx.beginPath();
+          ctx.moveTo(cx - w / 2, cy + h / 2);
+          ctx.lineTo(cx + w / 2, cy + h / 2);
+          ctx.lineTo(cx, cy - h / 2);
+          ctx.closePath();
+          ctx.fill();
+        }
+      },
+
+      // 패턴 4: 물결
+      function(ctx, theme) {
+        ctx.fillStyle = theme.bg;
+        ctx.fillRect(0, 0, 300, 300);
+        ctx.lineWidth = 1.5;
+        for (let y = 0; y < 300; y += 8) {
+          const amp = 5 + Math.random() * 7;
+          const freq = 0.04 + Math.random() * 0.03;
+          const offset = Math.random() * 30;
+          ctx.beginPath();
+          for (let x = 0; x <= 300; x++) {
+            ctx.lineTo(x, y + amp * Math.sin((x + offset) * freq));
+          }
+          ctx.strokeStyle = theme.fgColors[Math.floor(Math.random() * theme.fgColors.length)];
+          ctx.stroke();
+        }
+      },
+      //<“ChatGPT”,https://chatgpt.com/,182~193,2025.05>
+
+      // 패턴 5: 둥근 꽃
+      function(ctx, theme) {
+        ctx.fillStyle = theme.bg;
+        ctx.fillRect(0, 0, 300, 300);
+        for (let i = 0; i < 30; i++) {
+          const x = 30 + Math.random() * 240;
+          const y = 30 + Math.random() * 240;
+          const scale = 0.6 + Math.random() * 0.7;
+          for (let j = 0; j < 6; j++) {
+            const angle = (Math.PI * 2 / 6) * j;
+            const px = x + 15 * scale * Math.cos(angle);
+            const py = y + 15 * scale * Math.sin(angle);
+            ctx.fillStyle = theme.fgColors[Math.floor(Math.random() * theme.fgColors.length)];
+            ctx.beginPath();
+            ctx.ellipse(px, py, 15 * scale, 15 * scale, angle, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.fillStyle = "#FF8C00";
+          ctx.beginPath();
+          ctx.arc(x, y, 5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      //<“ChatGPT”,https://chatgpt.com/,197~217,2025.05>
+    ];
+
+    function drawPattern(canvas, patternIndex, themeIndex) {
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.scale(canvas.width / 300, canvas.height / 300);
+      const theme = colorThemes[themeIndex];
+      patterns[patternIndex](ctx, theme);
+      ctx.restore();
+    }
+
+    function setupCanvas(index) {
+      const canvas = document.getElementById(`canvas${index}`);
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+      patternStates[index] = index % patterns.length;
+      colorStates[index] = index % colorThemes.length;
+      drawPattern(canvas, patternStates[index], colorStates[index]);
+      canvas.addEventListener('click', () => {
+        patternStates[index] = (patternStates[index] + 1) % patterns.length;
+        activeCanvasIndex = index;
+        document.getElementById('controlPanel').style.display = 'flex';
+        drawPattern(canvas, patternStates[index], colorStates[index]);
+      });
+    }
+
+    function changeColor() {
+      if (activeCanvasIndex !== null) {
+        colorStates[activeCanvasIndex] = (colorStates[activeCanvasIndex] + 1) % colorThemes.length;
+        const canvas = document.getElementById(`canvas${activeCanvasIndex}`);
+        drawPattern(canvas, patternStates[activeCanvasIndex], colorStates[activeCanvasIndex]);
+      }
+    }
+
+    function changeSize(val) {
+      currentScale = parseFloat(val);
+      if (activeCanvasIndex !== null) {
+        const canvas = document.getElementById(`canvas${activeCanvasIndex}`);
+        drawPattern(canvas, patternStates[activeCanvasIndex], colorStates[activeCanvasIndex]);
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && activeCanvasIndex !== null) {
+        colorStates[activeCanvasIndex] = 0;
+        const canvas = document.getElementById(`canvas${activeCanvasIndex}`);
+        drawPattern(canvas, patternStates[activeCanvasIndex], 0);
+      }
+    });
+
+    for (let i = 0; i < 8; i++) setupCanvas(i);
+   //<“ChatGPT”,https://chatgpt.com/,222~271,2025.05> 
+    
+    
+    //도움말 뜨는 부분
+      const questionImg = document.querySelector('.question');
+    const tooltipImg = document.getElementById('tooltip');
+
+    questionImg.addEventListener('mouseenter', () => {
+      tooltipImg.style.display = 'block';
+    });
+
+    questionImg.addEventListener('mouseleave', () => {
+      tooltipImg.style.display = 'none';
+    });
+       questionImg.addEventListener('mouseleave', () => {
+      tooltipImg.style.display = 'none';
+    });
+
+  // ✅ Finish 버튼 클릭 시: 패널 숨기고 안내 메시지 띄우기
+    document.querySelector('.finish-btn img').addEventListener('click', () => {
+      const panel = document.getElementById('controlPanel');
+      panel.style.display = 'none';
+
+      alert('나만의 정원이 완성되었습니다! 화면 캡처를 통해 나만의 정원을 저장해보세요!');
+    });
+
+    </script>
+</body>
+</html>
